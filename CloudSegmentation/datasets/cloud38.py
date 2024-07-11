@@ -93,8 +93,8 @@ class Cloud38(Dataset):
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
-    ds = Cloud38(Path('/home/avi/data'), train=True, transform=None)
+    ds = Cloud38(Path('/home/av/data'), train=True, transform=None)
     image, label = ds[1000]
-    plt.figure(); plt.imshow(image.permute(1, 2, 0)[:, :, :3]); plt.show(); plt.pause(0.001)
+    plt.figure(); plt.imshow(image.permute(1, 2, 0)[:, :, :3]); plt.draw(); plt.pause(0.1)
 
     ...
