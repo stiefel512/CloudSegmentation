@@ -70,7 +70,7 @@ class Cloud38(Dataset):
         return np.expand_dims(mask, 0) if add_dims else mask
 
     def __getitem__(self, idx):
-        x = torch.tensor(self.read_as_array(idx, include_nir=False, reverse_dims=True))
+        x = torch.tensor(self.read_as_array(idx, include_nir=False, reverse_dims=True)).float()
         x = transforms.Resize(self.image_size, interpolation=transforms.InterpolationMode.BILINEAR)(x)
 
         if self.train:

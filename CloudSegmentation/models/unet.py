@@ -38,3 +38,4 @@ class UNet(nn.Module):
         x9 = self.up1(x8, x1)
 
         out = self.out_conv(x9)
+        return out

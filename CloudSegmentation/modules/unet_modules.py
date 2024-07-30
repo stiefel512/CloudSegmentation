@@ -34,7 +34,7 @@ class UpConvBlock(nn.Module):
     def __init__(self, in_planes, planes):
         super(UpConvBlock, self).__init__()
 
-        self.up_conv = nn.ConvTranspose2d(in_planes, planes, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), output_padding=(1, 1), bias=False)
+        self.up_conv = nn.ConvTranspose2d(in_planes, planes, kernel_size=(3, 3), stride=(2, 2), padding=(1, 1), output_padding=(1, 1), bias=False)
         self.conv = DualConvBlock(in_planes, planes)
 
     def forward(self, x, skip):
