@@ -3,6 +3,7 @@ from torch import nn
 import torch.nn.functional as F
 
 from CloudSegmentation.models.unet import UNet
+from CloudSegmentation.models.resnetunet import ResNetUNet
 from CloudSegmentation.metrics import binary_iou
 import segmentation_models_pytorch as smp
 import pytorch_lightning as pl
@@ -13,7 +14,8 @@ class CloudSegmentation(pl.LightningModule):
         super(CloudSegmentation, self).__init__()
         self.save_hyperparameters()
 
-        self.model = UNet(num_channels, num_classes)
+        # self.model = UNet(num_channels, num_classes)
+        self.model = ResNetUNet(num_channels, num_classes)
         self.activation = nn.Softmax(dim=1) if num_classes > 1 else None
 
         self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
@@ -30,8 +32,8 @@ class CloudSegmentation(pl.LightningModule):
 
         predictions = self(images)
         if self.hparams.num_classes == 1:
-            loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
-            # loss = self.loss(predictions, labels)
+            # loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            loss = self.loss(predictions, labels)
         else:
             ...
         iou = binary_iou(predictions, labels)
@@ -46,7 +48,8 @@ class CloudSegmentation(pl.LightningModule):
         images, labels = batch
         predictions = self(images)
         if self.hparams.num_classes == 1:
-            loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            # loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            loss = self.loss(predictions, labels)
         else:
             ...
         iou = binary_iou(predictions, labels)
@@ -99,7 +102,7 @@ if __name__ == "__main__":
     train_set, valid_set = data.random_split(ds, [train_set_size, valid_set_size], generator=seed)
 
     # model = UNet(3, 1)
-    segmenter = CloudSegmentation(3, 1, lr=1e-2)
+    segmenter = CloudSegmentation(3, 1, lr=1e-5)
 
     batch_size=64
     train_dl = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)
