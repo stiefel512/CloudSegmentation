@@ -18,12 +18,12 @@ class CloudSegmentation(pl.LightningModule):
         self.save_hyperparameters()
 
         # self.model = UNet(num_channels, num_classes)
-        # self.model = ResNetUNet(num_channels, num_classes)
-        self.model = CSDNet(num_channels, num_classes)
+        self.model = ResNetUNet(num_channels, num_classes)
+        # self.model = CSDNet(num_channels, num_classes)
         self.activation = nn.Softmax(dim=1) if num_classes > 1 else None
 
         # self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
-        self.loss = CSDNetLoss(1)
+        # self.loss = CSDNetLoss(1)
 
     def forward(self, x):
         out = self.model(x)
@@ -37,11 +37,11 @@ class CloudSegmentation(pl.LightningModule):
 
         predictions = self(images)
         if self.hparams.num_classes == 1:
-            # loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
-            loss = self.loss(predictions, labels)
+            loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            # loss = self.loss(predictions, labels)
         else:
             ...
-        iou = binary_iou(predictions[0], labels)
+        iou = binary_iou(predictions, labels)
 
         self.log_dict({
             "train_loss": loss,
@@ -53,11 +53,11 @@ class CloudSegmentation(pl.LightningModule):
         images, labels = batch
         predictions = self(images)
         if self.hparams.num_classes == 1:
-            # loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
-            loss = self.loss(predictions, labels)
+            loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            # loss = self.loss(predictions, labels)
         else:
             ...
-        iou = binary_iou(predictions[0], labels)
+        iou = binary_iou(predictions, labels)
         if stage:
             self.log_dict({
                 f"{stage}_loss": loss,
@@ -71,7 +71,8 @@ class CloudSegmentation(pl.LightningModule):
         self._evaluate(batch, 'test')
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.model.parameters(), lr=self.hparams.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=1.0e-2)
+        return optimizer
 
 
 
@@ -81,7 +82,7 @@ if __name__ == "__main__":
     from torch.utils import data
     from pathlib import Path
 
-    ds = Cloud38(Path('/home/av/data'), True, None, image_size=(192, 192))
+    ds = Cloud38(Path('/home/av/data'), True, None, image_size=(192, 192), )
 
     train_set_size = int(len(ds) * 0.8)
     valid_set_size = len(ds) - train_set_size
