@@ -1,17 +1,17 @@
-import torch
-from torch import nn
-from torch.utils.data import Dataset
-from torchvision import transforms
+import os
+from typing import Any
+from pathlib import Path
 
 import numpy as np
-from PIL import Image
 
-from pathlib import Path
-from typing import Tuple
+import torch
+from torchvision import transforms, tv_tensors
+from torch.utils.data import Dataset
+from PIL import Image
 
 
 class Cloud38(Dataset):
-    def __init__(self, root: Path, train: bool, transform=None, image_size: Tuple[int, int] = (192, 192)):
+    def __init__(self, root: Path, train: bool, transform=None, image_size=(192, 192), include_nir=False, grayscale=False):
         super(Cloud38, self).__init__()
 
         self.train = train
@@ -24,6 +24,8 @@ class Cloud38(Dataset):
 
         self.transform = transform
         self.image_size = image_size
+        self.include_nir = include_nir
+        self.grayscale = grayscale
 
         r_dir = self.root / f"{train_test}_red"
         g_dir = self.root / f"{train_test}_green"
@@ -72,29 +74,32 @@ class Cloud38(Dataset):
     def __getitem__(self, idx):
         x = torch.tensor(self.read_as_array(idx, include_nir=False, reverse_dims=True)).float()
         x = transforms.Resize(self.image_size, interpolation=transforms.InterpolationMode.BILINEAR)(x)
+        if self.grayscale:
+            x = x.mean(dim=0)[None, ...]
 
         if self.train:
-            y = torch.tensor(self.read_mask(idx, add_dims=False), dtype=torch.int64)
-            y = transforms.Resize(
-                self.image_size, interpolation=transforms.InterpolationMode.NEAREST
-            )(y[None, ...]).squeeze()
+            y = torch.tensor(self.open_mask(idx, add_dims=False), dtype=torch.int64)
+            y = transforms.Resize(self.image_size, interpolation=transforms.InterpolationMode.NEAREST, antialias=False)(y[None, ...]).squeeze()
+            if self.transform:
+                x, y = self.transform(x, tv_tensors.Mask(y))
             return x, y
         else:
             return x
 
-    def read_as_pil(self, idx):
-        arr = 256 * self.read_as_array(idx)
+    def open_as_pil(self, idx):
+        arr = 256 * self.open_as_array(idx)
         return Image.fromarray(arr.astype(np.uint8), 'RGB')
 
     def __repr__(self):
-        s = 'Dataset Class for 38-Cloud Dataset with {} files'.format(self.__len__())
+        s = 'Dataset class with {} files'.format(self.__len__())
         return s
 
 
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
     ds = Cloud38(Path('/home/av/data'), train=True, transform=None)
-    image, label = ds[1000]
-    plt.figure(); plt.imshow(image.permute(1, 2, 0)[:, :, :3]); plt.draw(); plt.pause(0.1)
-
+    print(ds)
+    image, label = ds[21]
+    plt.figure(); plt.imshow(image.permute(1, 2, 0)[:, :, :3]); plt.draw(); plt.pause(0.001)
+    plt.figure(); plt.imshow(label); plt.draw(); plt.pause(0.001)
     ...

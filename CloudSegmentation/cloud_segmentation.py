@@ -82,7 +82,21 @@ if __name__ == "__main__":
     from torch.utils import data
     from pathlib import Path
 
-    ds = Cloud38(Path('/home/av/data'), True, None, image_size=(192, 192), )
+    from torchvision.transforms import v2
+
+    crop_size = (192, 192)
+    trans = v2.Compose([
+        v2.ToImage(),
+    #     # RotateTransform(angles=(0, 90, 180, 270)),
+        v2.RandomHorizontalFlip(p=0.5),
+        # v2.RandomPhotometricDistort(),  # (original paper: intensity shift- scale whole image by 0.9-1.1, and chromatic shift- scale each channel by 0.95-1.05
+    #     # RandomSaltPepperNoise(),
+    #     # RandomGaussianNoise(),
+        v2.RandomCrop(crop_size),
+        v2.ToDtype(torch.float32, scale=True),
+    ])
+
+    ds = Cloud38(Path('/home/av/data'), True, transform=trans, image_size=(192, 192), include_nir=False, grayscale=True)
 
     train_set_size = int(len(ds) * 0.8)
     valid_set_size = len(ds) - train_set_size
@@ -91,8 +105,7 @@ if __name__ == "__main__":
 
     train_set, valid_set = data.random_split(ds, [train_set_size, valid_set_size], generator=seed)
 
-    # model = UNet(3, 1)
-    segmenter = CloudSegmentation(3, 1, lr=1e-2)
+    segmenter = CloudSegmentation(1, 1, lr=1e-2)
 
     batch_size=64
     train_dl = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)

@@ -2,10 +2,21 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Cloud Segmentation",
+            "name": "Cloud Segmentation",
             "type": "debugpy",
             "request": "launch",
             "program": "./CloudSegmentation/cloud_segmentation.py",
+            "console": "integratedTerminal",
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "PYTHONPATH": "${cwd}"
+            }
+        },
+        {
+            "name": "38-Cloud Test",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "./CloudSegmentation/datasets/cloud38.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
