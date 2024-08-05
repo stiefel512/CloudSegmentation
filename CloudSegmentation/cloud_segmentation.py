@@ -18,12 +18,12 @@ class CloudSegmentation(pl.LightningModule):
         self.save_hyperparameters()
 
         # self.model = UNet(num_channels, num_classes)
-        # self.model = ResNetUNet(num_channels, num_classes)
-        self.model = CSDNet(num_channels, num_classes)
+        self.model = ResNetUNet(num_channels, num_classes)
+        # self.model = CSDNet(num_channels, num_classes)
         self.activation = nn.Softmax(dim=1) if num_classes > 1 else None
 
-        # self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
-        self.loss = CSDNetLoss(1)
+        self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+        # self.loss = CSDNetLoss(1)
 
     def forward(self, x):
         out = self.model(x)
@@ -37,11 +37,11 @@ class CloudSegmentation(pl.LightningModule):
 
         predictions = self(images)
         if self.hparams.num_classes == 1:
-            # loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
-            loss = self.loss(predictions, labels)
+            loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            # loss = self.loss(predictions, labels)
         else:
             ...
-        iou = binary_iou(predictions[0], labels)
+        iou = binary_iou(predictions, labels)
 
         self.log_dict({
             "train_loss": loss,
@@ -53,11 +53,11 @@ class CloudSegmentation(pl.LightningModule):
         images, labels = batch
         predictions = self(images)
         if self.hparams.num_classes == 1:
-            # loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
-            loss = self.loss(predictions, labels)
+            loss = F.binary_cross_entropy_with_logits(predictions, labels[:, None, :, :].float())
+            # loss = self.loss(predictions, labels)
         else:
             ...
-        iou = binary_iou(predictions[0], labels)
+        iou = binary_iou(predictions, labels)
         if stage:
             self.log_dict({
                 f"{stage}_loss": loss,
@@ -81,7 +81,21 @@ if __name__ == "__main__":
     from torch.utils import data
     from pathlib import Path
 
-    ds = Cloud38(Path('/home/av/data'), True, None, image_size=(192, 192))
+    from torchvision.transforms import v2
+
+    crop_size = (192, 192)
+    trans = v2.Compose([
+        v2.ToImage(),
+    #     # RotateTransform(angles=(0, 90, 180, 270)),
+        v2.RandomHorizontalFlip(p=0.5),
+        # v2.RandomPhotometricDistort(),  # (original paper: intensity shift- scale whole image by 0.9-1.1, and chromatic shift- scale each channel by 0.95-1.05
+    #     # RandomSaltPepperNoise(),
+    #     # RandomGaussianNoise(),
+        v2.RandomCrop(crop_size),
+        v2.ToDtype(torch.float32, scale=True),
+    ])
+
+    ds = Cloud38(Path('/home/av/data'), True, transform=trans, image_size=(192, 192), include_nir=False, grayscale=True)
 
     train_set_size = int(len(ds) * 0.8)
     valid_set_size = len(ds) - train_set_size
@@ -90,8 +104,7 @@ if __name__ == "__main__":
 
     train_set, valid_set = data.random_split(ds, [train_set_size, valid_set_size], generator=seed)
 
-    # model = UNet(3, 1)
-    segmenter = CloudSegmentation(3, 1, lr=1e-2)
+    segmenter = CloudSegmentation(1, 1, lr=1e-2)
 
     batch_size=64
     train_dl = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)
