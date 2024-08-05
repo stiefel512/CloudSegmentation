@@ -4,6 +4,9 @@ import torch.nn.functional as F
 
 from CloudSegmentation.models.unet import UNet
 from CloudSegmentation.models.resnetunet import ResNetUNet
+from CloudSegmentation.models.csdnet import CSDNet
+
+from CloudSegmentation.losses.csdnet_loss import CSDNetLoss
 from CloudSegmentation.metrics import binary_iou
 import segmentation_models_pytorch as smp
 import pytorch_lightning as pl
@@ -15,10 +18,12 @@ class CloudSegmentation(pl.LightningModule):
         self.save_hyperparameters()
 
         # self.model = UNet(num_channels, num_classes)
-        self.model = ResNetUNet(num_channels, num_classes)
+        # self.model = ResNetUNet(num_channels, num_classes)
+        self.model = CSDNet(num_channels, num_classes)
         self.activation = nn.Softmax(dim=1) if num_classes > 1 else None
 
-        self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+        # self.loss = smp.losses.DiceLoss(smp.losses.BINARY_MODE, from_logits=True)
+        self.loss = CSDNetLoss(1)
 
     def forward(self, x):
         out = self.model(x)
@@ -36,7 +41,7 @@ class CloudSegmentation(pl.LightningModule):
             loss = self.loss(predictions, labels)
         else:
             ...
-        iou = binary_iou(predictions, labels)
+        iou = binary_iou(predictions[0], labels)
 
         self.log_dict({
             "train_loss": loss,
@@ -52,7 +57,7 @@ class CloudSegmentation(pl.LightningModule):
             loss = self.loss(predictions, labels)
         else:
             ...
-        iou = binary_iou(predictions, labels)
+        iou = binary_iou(predictions[0], labels)
         if stage:
             self.log_dict({
                 f"{stage}_loss": loss,
@@ -66,23 +71,7 @@ class CloudSegmentation(pl.LightningModule):
         self._evaluate(batch, 'test')
 
     def configure_optimizers(self):
-        # optimizer = torch.optim.SGD(self.model.parameters(), self.hparams.lr,
-        #                             momentum=0.9,
-        #                             weight_decay=5e-4)
-
-        # steps_per_epoch = 45000 // CIFAR10_BATCH_SIZE  # specifically tuned for cifar10, 90:10 train/valid
-        # scheduler_dict = {
-        #     "scheduler": OneCycleLR(
-        #         optimizer,
-        #         0.1,
-        #         epochs=self.trainer.max_epochs,
-        #         steps_per_epoch=steps_per_epoch,
-        #     ),
-        #     "interval": "step",
-        # }
-        # return {"optimizer": optimizer, "lr_scheduler": scheduler_dict}
-        # return optimizer
-        return torch.optim.Adam(self.parameters(), lr=self.hparams.lr)
+        return torch.optim.Adam(self.model.parameters(), lr=self.hparams.lr)
 
 
 
@@ -102,7 +91,7 @@ if __name__ == "__main__":
     train_set, valid_set = data.random_split(ds, [train_set_size, valid_set_size], generator=seed)
 
     # model = UNet(3, 1)
-    segmenter = CloudSegmentation(3, 1, lr=1e-5)
+    segmenter = CloudSegmentation(3, 1, lr=1e-2)
 
     batch_size=64
     train_dl = DataLoader(train_set, batch_size=batch_size, shuffle=True, num_workers=8)

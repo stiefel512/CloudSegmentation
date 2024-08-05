@@ -2,10 +2,10 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python Debugger: Current File",
+            "name": "Python Debugger: Cloud Segmentation",
             "type": "debugpy",
             "request": "launch",
-            "program": "${file}",
+            "program": "./CloudSegmentation/cloud_segmentation.py",
             "console": "integratedTerminal",
             "cwd": "${workspaceFolder}",
             "env": {
